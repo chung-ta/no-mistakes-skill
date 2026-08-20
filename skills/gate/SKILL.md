@@ -59,6 +59,14 @@ Prefer the wrapper (`./mvnw`, `./gradlew`) over a system `mvn`/`gradle` — it p
 
 Only run a plugin the repo actually configures. Never add one as a side effect.
 
+## Resolve the delivery mode
+
+Before running anything, resolve **fast** vs **full** from the base branch and read `references/delivery-modes.md`.
+
+Short version: a base branch matching `^(team|play)`, or a current branch name containing `TEAM`, means **fast** — skip review, test, and documentation, including for diffs that touch migrations. Everything else is **full**.
+
+State the resolved mode before starting: *"team1 base → fast mode: skipping review and test."* A silently-skipped review looks identical to a review that found nothing.
+
 ## Run the pipeline
 
 Do the whole pipeline in an **isolated worktree** so nothing you run disturbs the user's working tree:
@@ -86,9 +94,15 @@ Resolve conflicts yourself when the resolution is unambiguous. When a conflict h
 
 ### 2. Adversarial review
 
+**Fast mode skips this stage entirely**, including for diffs that touch migrations. See `references/delivery-modes.md`.
+
 This is where most problems get caught. **Delegate it to a subagent with a fresh context window.** Do not review your own diff inline — you wrote it, and you will rationalize it.
 
-Pass the subagent the full review contract in `references/review-contract.md`, the intent, the diff, and the branch/base SHAs. It returns structured findings with an action and a risk level.
+Read `references/house-review-rules.md` first. It names the authoritative reviewers, carries the rules this codebase has been burned by (Cartesian product, boundary conditions, eager-fetch consumer tracing, migrations), and defines the severity normalization table.
+
+**Run `/pre-pr-review` as the reviewer.** It already fans out five specialists against this codebase's own conventions, and it is what `pre-pr-create.sh` requires — so review happens once rather than twice. Pass it the base branch. Use `references/review-contract.md` for the finding schema and the restraint rules, and only fall back to a bespoke reviewer subagent when `/pre-pr-review` is unavailable.
+
+Normalize whatever comes back into `gate`'s finding schema using the table in `house-review-rules.md`, keyed on **(source, tier)** — never on the tier label alone, since `Major` means opposite things across paths. Preserve each finding's original label in its text, and fail closed on any tier the table does not list.
 
 Then act on the findings by their `action`:
 
@@ -103,6 +117,8 @@ Carry cross-round context explicitly in the prompt (previous findings, what was 
 Repeat review → fix → re-review until a round returns no `error`-severity findings. Cap at 3 rounds, then escalate to the user with what is still open.
 
 ### 3. Test with evidence
+
+**Fast mode skips this stage.**
 
 Run the suite:
 
@@ -130,6 +146,8 @@ Prefer the narrowest Spring test that proves the point — `@WebMvcTest` over `@
 
 ### 4. Documentation
 
+**Fast mode skips this stage.**
+
 Update what the change actually invalidated: Javadoc on changed public API, `README`/`docs/` for behavior or configuration users depend on, OpenAPI annotations, and any architecture note describing a contract you altered. Do not manufacture documentation for unchanged code.
 
 ### 5. Format and lint
@@ -146,6 +164,17 @@ If the repo has no formatter plugin, conform to the `java-house-style` skill by 
 git push -u origin "$BRANCH"
 gh pr create --title "<conventional commit style title>" --body-file .gate/pr-body.md
 ```
+
+**The review sentinel.** `~/.claude/hooks/pre-pr-create.sh` blocks `gh pr create` unless `/tmp/claude-pr-review-done-<branch>` exists. Write it only when the gate has genuinely earned it:
+
+- **full mode** — the review stage ran and no blocking finding is left unresolved
+- **fast mode** — the mode resolved to fast under the documented rule (no review runs, so there is nothing to leave unresolved)
+
+```sh
+touch "/tmp/claude-pr-review-done-$(git rev-parse --abbrev-ref HEAD)"
+```
+
+Never write it to get past the hook. If review left blocking findings open, the hook is correctly stopping the PR — fix them and re-run. Writing the sentinel around an unfinished review disables the only enforced quality gate in this workflow.
 
 The PR body must carry, in this order:
 
@@ -170,6 +199,18 @@ gh pr checks --watch
 ```
 
 On failure, read the actual log (`gh run view <id> --log-failed`), fix the cause, and push again. Distinguish a **real** failure from a **transient** one (flaky test, runner timeout, network blip) — retry a transient once before treating it as real, and say which you concluded.
+
+**`gh pr checks` only sees checks reported back to GitHub.** Most Real Java services build on **TeamCity → Brahman → ArgoCD**, not GitHub Actions, so this stage has three outcomes, not two:
+
+| Outcome | Meaning | Do |
+|---|---|---|
+| Checks appear, green | CI passed | Report green |
+| Checks appear, red | CI failed | Read the log, fix, push |
+| **No checks ever register** | CI is not reporting to GitHub | **Do not conclude green.** Verify through TeamCity directly |
+
+An empty check list is **not** success and **not** failure — it is the absence of a signal, and reporting it as green is how an unverified branch gets merged. When nothing registers within a couple of minutes, stop polling and switch: load the `teamcity-cli` skill (or `real-eng:teamcity-reference`) and confirm the build through the TeamCity CLI. Some feature-branch builds need a **manual trigger** rather than firing on push — if so, say that plainly rather than treating "no build" as "clean build".
+
+**Always name which path you verified through**, because "CI passed" means different things: *"green via `gh pr checks`"* or *"green via TeamCity build #NNNN"*. Never report CI status you did not actually observe.
 
 Also re-check mergeability: a conflict can land while CI runs. Rebase and push if so.
 
