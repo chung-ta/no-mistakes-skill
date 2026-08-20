@@ -1,11 +1,11 @@
 ---
 name: java-house-style
-description: House Java formatting and structure conventions (Common Style V2). Load before writing, reviewing, or reformatting any Java, Spring Boot, or JVM source in a repository that uses this style — the formatting here is unusual (chop-down wrapping with parens on their own lines, 2-space indent, enforced member ordering) and default Java habits will produce diffs that fight the IDE's format-on-save.
+description: House Java formatting and structure conventions (Real Style V2). Load before writing, reviewing, or reformatting any Java, Spring Boot, or JVM source in a repository that uses this style — the formatting here is unusual (chop-down wrapping with parens on their own lines, 2-space indent, enforced member ordering) and default Java habits will produce diffs that fight the IDE's format-on-save.
 ---
 
-# Common Java House Style (Common Style V2)
+# Java House Style (Real Style V2)
 
-Canonical source: the `Common Style V2` IntelliJ scheme, distributed via the Settings Repository plugin from `common/java-code-style`.
+Canonical source: the `Real Style V2` IntelliJ scheme at `~/development/workspace/java-code-style/codestyles/Real Style V2.xml`, mirrored at `~/.claude/Real-Style-V2.xml` (byte-identical). The XML is authoritative — where this document and the scheme disagree, the scheme wins and this document should be corrected.
 
 IntelliJ runs **Reformat Code, Optimize Imports, Rearrange Code, and Run Code Cleanup on every save**. Any code you write that deviates will be silently rewritten the first time a human opens the file, producing a noisy phantom diff that gets blamed on your change. Match the style on the way in.
 
