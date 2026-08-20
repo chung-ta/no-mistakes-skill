@@ -162,16 +162,18 @@ If the repo has no formatter plugin, conform to the `java-house-style` skill by 
 
 ```sh
 git push -u origin "$BRANCH"
-gh pr create --title "<conventional commit style title>" --body-file .gate/pr-body.md
+gh pr create --base "<the base branch>" --title "<conventional commit style title>" --body-file .gate/pr-body.md
 ```
+
+**Always pass `--base` explicitly.** The hook parses the base branch out of this exact command and falls back to `master` when the flag is absent. Omitting it while the pipeline resolved fast mode from somewhere else makes the hook and the skill read different values — the one divergence `references/delivery-modes.md` exists to prevent. The base you pass here must be the same one the mode was resolved from.
 
 **The review sentinel.** `~/.claude/hooks/pre-pr-create.sh` blocks `gh pr create` unless `/tmp/claude-pr-review-done-<branch>` exists. Write it only when the gate has genuinely earned it:
 
-- **full mode** — the review stage ran and no blocking finding is left unresolved
+- **full mode** — a review round returned **no `error`-severity findings**. Not merely that the loop terminated: `/pre-pr-review` exits legitimately at its 4-iteration cap and on a same-finding stall, and both of those hand back control with blocking findings still open. A capped or stalled loop has **not** earned the sentinel — escalate to the user with what is still open instead.
 - **fast mode** — the mode resolved to fast under the documented rule (no review runs, so there is nothing to leave unresolved)
 
 ```sh
-touch "/tmp/claude-pr-review-done-$(git rev-parse --abbrev-ref HEAD)"
+touch "/tmp/claude-pr-review-done-$BRANCH"
 ```
 
 Never write it to get past the hook. If review left blocking findings open, the hook is correctly stopping the PR — fix them and re-run. Writing the sentinel around an unfinished review disables the only enforced quality gate in this workflow.

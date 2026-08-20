@@ -39,12 +39,15 @@ Fast mode runs **no review stage at all**, including for schema changes. A diff 
 
 This is a deliberate call. Team and play branches are for iteration, and gating them behind review defeats their purpose. The cost is real and worth naming: a non-backward-compatible migration merged to a team branch runs against that environment's shared database and can break every developer on it. Fast mode trades that risk for speed on branches where speed is the point.
 
-`master` and every other base still get the full review, so migrations are reviewed before they reach anything permanent. Reach for `gate --full` on a team branch when a particular schema change deserves the scrutiny.
+`master` and every other base still get the full review, so migrations are reviewed before they reach anything permanent. Ask for full mode on a team branch when a particular schema change deserves the scrutiny (see Overrides below).
 
 ## Overrides
 
-- `gate --full` forces the full pipeline on a team/play base. Use when the change is risky enough to want review despite the branch.
-- `gate --fast` is **not** offered for a `master` base. If a change is too urgent for review, that is a conversation to have deliberately, not a flag to pass.
+There is no flag to parse: `$ARGUMENTS` is the task text, so `/gate --full` would be read as "do the task `--full`, then gate it". Override in natural language instead — *"gate this but run full mode"* — and state the override and its reason before starting.
+
+Forcing **full** on a team/play base is the useful direction: use it when a change is risky enough to want review despite the branch, which is the escape hatch for a schema change that fast mode would otherwise skip.
+
+Forcing **fast** on a `master` base is not offered. If a change is too urgent for review, that is a conversation to have deliberately, not an override to slip past.
 
 ## The sentinel
 

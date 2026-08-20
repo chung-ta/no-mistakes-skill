@@ -8,7 +8,7 @@ These are the review rules this codebase has actually been burned by. They exten
 
 | Source | Owns |
 |---|---|
-| `~/.claude/agents/java-spring-code-reviewer.md` | The full 16-section Java/Spring review. The authority for everything below. |
+| `~/.claude/agents/java-spring-code-reviewer.md` | The full Java/Spring review (sections 0–16 plus lettered sub-sections). The authority for everything below. |
 | `~/.claude/agents/flyway-migration-reviewer.md` | Zero-downtime migration safety; verdict is SAFE / UNSAFE. |
 | `~/.claude/skills/pre-pr-review/SKILL.md` | The 5-agent parallel pipeline `gate` drives in full mode. |
 | `~/.claude/Real-Style-V2.xml` | Canonical formatting scheme. `java-house-style` describes it; the XML wins on conflict. |
@@ -56,7 +56,7 @@ For `@EntityGraph`/`JOIN FETCH`, trace the **full consumer path** — mapper, DT
 
 ### Migrations
 
-Owned by `flyway-migration-reviewer`. The blocking set: `NOT NULL` without a default; `DROP COLUMN`; `CREATE INDEX` without `CONCURRENTLY`; `ALTER COLUMN TYPE`; renames; `LOCK TABLE`. Plus audit-table (`_aud`) parity when the entity is `@Audited`.
+Owned by `flyway-migration-reviewer`. The blocking set: `NOT NULL` without a default; `DROP COLUMN`; `CREATE INDEX` without `CONCURRENTLY`; `ALTER COLUMN TYPE`; renames; `DROP TABLE` without verifying no code references it; `LOCK TABLE`. Plus audit-table (`_aud`) parity when the entity is `@Audited`.
 
 Like every other review rule here, this applies in **full mode only**. Fast mode runs no review stage at all, migrations included — see `delivery-modes.md`.
 
@@ -66,11 +66,15 @@ Review paths in this workspace use different scales, and the same word means dif
 
 | Source | Their tier | `gate` severity | Blocking |
 |---|---|---|---|
-| java-spring-code-reviewer, flyway-migration-reviewer | 🔴 Critical | `error` | yes |
+| java-spring-code-reviewer | 🔴 Critical | `error` | yes |
 | " | 🟠 Warning | `error` | yes |
 | " | 🟡 Major | `warning` | no |
 | " | 🔵 Minor | `info` | no |
 | " | 💡 Suggestion | `info` | no |
+| flyway-migration-reviewer | 🔴 Critical | `error` | yes |
+| " | 🟠 Warning | `error` | yes |
+| " | 🟡 Major | `warning` | no |
+| " | 🔵 Minor | `info` | no |
 | pre-pr-review, yenta pr-review | `[Critical]` | `error` | yes |
 | " | `[Major]` | `error` | yes |
 | " | `[Minor]` | `warning` | no |
